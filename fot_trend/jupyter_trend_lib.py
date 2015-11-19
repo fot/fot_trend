@@ -242,11 +242,18 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     if plot_warning_low or plot_caution_low or plot_caution_high or plot_warning_high:
         try:
             limdict = pylimmon.get_limits(msid)
-            wL = limdict['limsets'][0]['warning_low']
-            cL = limdict['limsets'][0]['caution_low']
-            ch = limdict['limsets'][0]['caution_high']
-            wh = limdict['limsets'][0]['warning_high']
-            dates =  limdict['limsets'][0]['times']
+            enabled = np.array(limdict['limsets'][0]['mlmenable']) == 1
+            last_enabled = np.where(enabled)[0]
+            if len(last_enabled) > 0:
+                if last_enabled[-1] < (len(enabled)-1):
+                    enabled[last_enabled[-1] + 1] = True
+
+            wL = np.array(limdict['limsets'][0]['warning_low'])[enabled]
+            cL = np.array(limdict['limsets'][0]['caution_low'])[enabled]
+            ch = np.array(limdict['limsets'][0]['caution_high'])[enabled]
+            wh = np.array(limdict['limsets'][0]['warning_high'])[enabled]
+            dates =  np.array(limdict['limsets'][0]['times'])[enabled]
+
             limitquery = True
         except IndexError:
             pass
