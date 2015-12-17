@@ -189,3 +189,79 @@ def get_month_boundaries(startyear=1999, endyear=None, trim_start_mission=True, 
             boundaries.pop(0)
         
     return boundaries
+
+
+
+def calc_monthly_stats(t, dmin, dmean, dmax):
+    """ Calculate monthly stats
+
+    :param t: Time numpy array
+    :param dmin: Minimum statistical data in a numpy array
+    :param dmean: Mean statistical data in a numpy array
+    :param dmax: Maximum statistical data in a numpy array
+
+    Note: dmin, dmean, and dmax are meant to include the statistical data from the ska archive,
+    such as the 5min or daily stats. 
+
+    This method can use raw values instead of statistical values if the same raw values are passed
+    for each the dmin, dmean, and dmax positional arguments.
+
+    """
+        
+    numindspermonth = np.int(30*3600*24 / np.median(np.diff(t)))
+    nummonths = np.int(len(t) / numindspermonth)
+    mtimes = [np.mean(t[n:n + numindspermonth]) for n in 
+               range((nummonths - 1) * numindspermonth, 0, -numindspermonth)]
+    mtimes.reverse()
+    mtimes = np.array(mtimes)
+    
+    mmaxes = [np.max(dmax[n:n + numindspermonth]) for n in 
+               range((nummonths - 1) * numindspermonth, 0, -numindspermonth)]
+    mmaxes.reverse()
+    mmaxes = np.array(mmaxes)
+    
+    mmeans = [np.mean(dmean[n:n + numindspermonth]) for n in 
+               range((nummonths - 1) * numindspermonth, 0, -numindspermonth)]
+    mmeans.reverse()
+    mmeans = np.array(mmeans)
+    
+    mmins = [np.min(dmin[n:n + numindspermonth]) for n in 
+               range((nummonths - 1) * numindspermonth, 0, -numindspermonth)] 
+    mmins.reverse()    
+    mmins = np.array(mmins)
+
+    return (mtimes, mmaxes, mmeans, mmins)
+
+
+def calc_daily_stats(t, dmin, dmean, dmax):
+    """ Calculate daily stats
+
+    :param t: Time numpy array
+    :param dmin: Minimum statistical data in a numpy array
+    :param dmean: Mean statistical data in a numpy array
+    :param dmax: Maximum statistical data in a numpy array
+
+    Note: dmin, dmean, and dmax are meant to include the 5min statistical data from the ska
+    archive. 
+
+    This method can use raw values instead of statistical values if the same raw values are passed
+    for each the dmin, dmean, and dmax positional arguments.
+
+    """
+
+    daystart = DateTime(DateTime(t1).date[:8] + ':00:00:00.000').secs
+    daystop = DateTime(DateTime(t2).date[:8] + ':00:00:00.000').secs
+
+    daysecs = 3600 * 24
+    days = np.arange(daystart, daystop + daysecs, daysecs)
+
+    indrange = np.arange(len(t))
+    dayindices = np.array([indrange[(t > ta) & (t <= tb)] for ta, tb in zip(days[:-1], days[1:])])
+
+    daymins = np.array([np.min(dmin[ind]) for ind in dayindices])
+    daymeans = np.array([np.mean(dmean[ind]) for ind in dayindices])
+    daymaxes = np.array([np.max(dmax[ind]) for ind in dayindices])
+
+    return days[:-1], daymins, daymeans, daymaxes
+
+
