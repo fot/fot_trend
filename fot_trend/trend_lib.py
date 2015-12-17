@@ -136,3 +136,56 @@ def write_csv(msid, stats):
             fid.write('\n')
 
 
+def filter_outliers(datavals, maxoutlierstddev=5):
+    return np.abs(datavals - np.mean(datavals)) <= (np.std(datavals) * maxoutlierstddev)
+
+
+def lowpass(vals, samp=32.8, cutoff=0.1):
+    B, A = butter(1, cutoff / (samp / 2.), btype='low') # 1st order Butterworth low-pass
+    return lfilter(B, A, vals, axis=0)
+
+
+def get_report_boundaries(startyear=1999, endyear=None, trim_future=True):
+    
+    startyear = int(startyear)
+    
+    if not endyear:
+        endyear = int(DateTime().date[:4])
+    else:
+        endyear = int(endyear)
+    
+    pairs = [[str(y) + 'Aug01 at 00:00:00.000', str(y+1) + 'Feb01 at 00:00:00.000'] 
+             for y in range(startyear, endyear + 1, 1)] 
+             
+    reportboundaries = [pairs[i][j] for i in range(len(pairs)) for j in range(2)]
+
+    if trim_future:
+        while DateTime(reportboundaries[-1]).secs > DateTime().secs:
+            reportboundaries.pop(-1)
+
+    return reportboundaries
+
+
+def get_month_boundaries(startyear=1999, endyear=None, trim_start_mission=True, trim_future=True):
+    
+    startyear = int(startyear)
+    
+    if not endyear:
+        endyear = int(DateTime().date[:4])
+    else:
+        endyear = int(endyear)
+    
+    months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan']
+
+    boundaries = [str(y) + months[m] + '01 at 00:00:00.000' 
+                  for y in range(startyear, endyear + 1, 1) for m in range(12)] 
+
+    if trim_future:
+        while DateTime(boundaries[-1]).secs > DateTime().secs:
+            boundaries.pop(-1)
+    
+    if trim_start_mission:
+        while DateTime(boundaries[0]).secs < DateTime('1999:204:00:00:00').secs:
+            boundaries.pop(0)
+        
+    return boundaries
