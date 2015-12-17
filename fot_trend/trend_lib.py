@@ -19,8 +19,6 @@ def find_span_indices(dval):
 
     if idata[-1] == 1:
         stops.insert(-1, True)
-    else:
-        stops.insert
 
     starts = np.where(starts)[0]
     stops = np.where(stops)[0]
