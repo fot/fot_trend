@@ -208,24 +208,24 @@ def calc_monthly_stats(t, dmin, dmean, dmax):
 
     """
         
-    numindspermonth = np.int(30*3600*24 / np.median(np.diff(t)))
+    numindspermonth = np.int(30*3600*24 / np.nanmedian(np.diff(t)))
     nummonths = np.int(len(t) / numindspermonth)
-    mtimes = [np.mean(t[n:n + numindspermonth]) for n in 
+    mtimes = [np.nanmean(t[n:n + numindspermonth]) for n in 
                range((nummonths - 1) * numindspermonth, 0, -numindspermonth)]
     mtimes.reverse()
     mtimes = np.array(mtimes)
     
-    mmaxes = [np.max(dmax[n:n + numindspermonth]) for n in 
+    mmaxes = [np.nanmax(dmax[n:n + numindspermonth]) for n in 
                range((nummonths - 1) * numindspermonth, 0, -numindspermonth)]
     mmaxes.reverse()
     mmaxes = np.array(mmaxes)
     
-    mmeans = [np.mean(dmean[n:n + numindspermonth]) for n in 
+    mmeans = [np.nanmean(dmean[n:n + numindspermonth]) for n in 
                range((nummonths - 1) * numindspermonth, 0, -numindspermonth)]
     mmeans.reverse()
     mmeans = np.array(mmeans)
     
-    mmins = [np.min(dmin[n:n + numindspermonth]) for n in 
+    mmins = [np.nanmin(dmin[n:n + numindspermonth]) for n in 
                range((nummonths - 1) * numindspermonth, 0, -numindspermonth)] 
     mmins.reverse()    
     mmins = np.array(mmins)
@@ -249,19 +249,40 @@ def calc_daily_stats(t, dmin, dmean, dmax):
 
     """
 
-    daystart = DateTime(DateTime(t1).date[:8] + ':00:00:00.000').secs
-    daystop = DateTime(DateTime(t2).date[:8] + ':00:00:00.000').secs
+    daystart = DateTime(DateTime(t[0]).date[:8] + ':00:00:00.000').secs
+    daystop = DateTime(DateTime(t[-1]).date[:8] + ':00:00:00.000').secs
 
-    daysecs = 3600 * 24
+    daysecs = 3600.* 24.
     days = np.arange(daystart, daystop + daysecs, daysecs)
+    # daybins = np.digitize(t, bins=days)
+    # b = np.bincount(daybins -1)
+    # c = np.hstack((0, np.cumsum(b)))
+    # ind = [(k1, k2-1) for k1, k2 in zip(c[:-1], c[1:])]
+    ind = digitizebins(t, days)
 
-    indrange = np.arange(len(t))
-    dayindices = np.array([indrange[(t > ta) & (t <= tb)] for ta, tb in zip(days[:-1], days[1:])])
-
-    daymins = np.array([np.min(dmin[ind]) for ind in dayindices])
-    daymeans = np.array([np.mean(dmean[ind]) for ind in dayindices])
-    daymaxes = np.array([np.max(dmax[ind]) for ind in dayindices])
+    daymins = np.array([np.min(dmin[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymeans = np.array([np.mean(dmean[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymaxes = np.array([np.max(dmax[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
 
     return days[:-1], daymins, daymeans, daymaxes
+
+
+def digitizebins(data, bins):
+    """ Calculate indices to binned data
+
+    :param data: 1d data array to be divided up into bins
+    :param bins: 1d array of bin boundaries
+
+    :returns: array of start and stop indices
+
+    Note: at this point, data needs to be sequential. I intend on generalizing this function for
+    non sequential data, however that will come as an enhancement in the future.
+
+    """
+    databins = np.digitize(data, bins=bins)
+    b = np.bincount(databins - 1)
+    c = np.hstack((0, np.cumsum(b)))
+    return np.array([(k1, k2-1) for k1, k2 in zip(c[:-1], c[1:])])
+
 
 
