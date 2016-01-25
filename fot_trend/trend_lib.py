@@ -260,9 +260,9 @@ def calc_daily_stats(t, dmin, dmean, dmax):
     # ind = [(k1, k2-1) for k1, k2 in zip(c[:-1], c[1:])]
     ind = digitizebins(t, days)
 
-    daymins = np.array([np.min(dmin[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
-    daymeans = np.array([np.mean(dmean[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
-    daymaxes = np.array([np.max(dmax[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymins = np.array([np.nanmin(dmin[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymeans = np.array([np.nanmean(dmean[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymaxes = np.array([np.nanmax(dmax[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
 
     return days[:-1], daymins, daymeans, daymaxes
 
