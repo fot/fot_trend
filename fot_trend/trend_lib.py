@@ -264,7 +264,40 @@ def calc_daily_stats(t, dmin, dmean, dmax):
     daymeans = np.array([np.nanmean(dmean[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
     daymaxes = np.array([np.nanmax(dmax[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
 
-    return days[:-1], daymins, daymeans, daymaxes
+    
+    # If there is a partial day of data at the end of the input data array(s), then there may be one less
+    # day of data than the number of days in the `days` array.
+    if len(days) > len(daymins):
+        days = days[:-1]
+
+    return days, daymins, daymeans, daymaxes
+
+
+def calc_5min_stats(t, dmin, dmean, dmax):
+    """ Calculate 5min stats
+
+    :param t: Time numpy array
+    :param dmin: Minimum statistical data in a numpy array
+    :param dmean: Mean statistical data in a numpy array
+    :param dmax: Maximum statistical data in a numpy array
+
+    Note: dmin, dmean, and dmax are meant to include the 5min statistical data from the ska
+    archive. 
+
+    This method can use raw values instead of statistical values if the same raw values are passed
+    for each the dmin, dmean, and dmax positional arguments.
+
+    """
+
+    bounds = np.arange(DateTime(t[0]).secs, DateTime(t[-1]).secs + 328, 328)
+    ind = digitizebins(t, bounds)
+
+    daymins = np.array([np.nanmin(dmin[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymeans = np.array([np.nanmean(dmean[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+    daymaxes = np.array([np.nanmax(dmax[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
+
+    meantimes = np.diff(bounds)/2 + bounds[:-1]
+    return meantimes, daymins, daymeans, daymaxes
 
 
 def digitizebins(data, bins):
