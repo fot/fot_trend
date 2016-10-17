@@ -114,7 +114,21 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
 
         add_limit_lines()
         
-        
+    def get_msid_limits(msid):
+        limdict = pylimmon.get_limits(msid)
+        enabled = np.array(limdict['limsets'][0]['mlmenable']) == 1
+        last_enabled = np.where(enabled)[0]
+        if len(last_enabled) > 0:
+            if last_enabled[-1] < (len(enabled)-1):
+                enabled[last_enabled[-1] + 1] = True
+
+        wL = np.array(limdict['limsets'][0]['warning_low'])[enabled]
+        cL = np.array(limdict['limsets'][0]['caution_low'])[enabled]
+        ch = np.array(limdict['limsets'][0]['caution_high'])[enabled]
+        wh = np.array(limdict['limsets'][0]['warning_high'])[enabled]
+        dates =  np.array(limdict['limsets'][0]['times'])[enabled]
+        return wL, cL, ch, wh, dates
+
         
     if 'none' in str(stat).lower():
         stat = None
@@ -146,21 +160,26 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     else:
         units = ''
 
+    wide = ['OOBTHR08', 'OOBTHR09', 'OOBTHR10', 'OOBTHR11', 'OOBTHR12', 'OOBTHR13', 'OOBTHR14',
+            'OOBTHR15', 'OOBTHR17', 'OOBTHR18', 'OOBTHR19', 'OOBTHR20', 'OOBTHR21', 'OOBTHR22',
+            'OOBTHR23', 'OOBTHR24', 'OOBTHR25', 'OOBTHR26', 'OOBTHR27', 'OOBTHR28', 'OOBTHR29',
+            'OOBTHR30', 'OOBTHR31', 'OOBTHR33', 'OOBTHR34', 'OOBTHR35', 'OOBTHR36', 'OOBTHR37',
+            'OOBTHR38', 'OOBTHR39', 'OOBTHR40', 'OOBTHR41', 'OOBTHR44', 'OOBTHR45', 'OOBTHR46',
+            'OOBTHR49', 'OOBTHR50', 'OOBTHR51', 'OOBTHR52', 'OOBTHR53', 'OOBTHR54', '4OAVHRMT',
+            '4OAVOBAT']
     limitquery = False
     if plot_warning_low or plot_caution_low or plot_caution_high or plot_warning_high:
         try:
-            limdict = pylimmon.get_limits(msid)
-            enabled = np.array(limdict['limsets'][0]['mlmenable']) == 1
-            last_enabled = np.where(enabled)[0]
-            if len(last_enabled) > 0:
-                if last_enabled[-1] < (len(enabled)-1):
-                    enabled[last_enabled[-1] + 1] = True
 
-            wL = np.array(limdict['limsets'][0]['warning_low'])[enabled]
-            cL = np.array(limdict['limsets'][0]['caution_low'])[enabled]
-            ch = np.array(limdict['limsets'][0]['caution_high'])[enabled]
-            wh = np.array(limdict['limsets'][0]['warning_high'])[enabled]
-            dates =  np.array(limdict['limsets'][0]['times'])[enabled]
+            wL, cL, ch, wh, dates = get_msid_limits(msid)
+
+            if msid.upper() in wide:
+                 wL2, cL2, ch2, wh2, dates2 = get_msid_limits(msid.upper() + '_WIDE')
+                 wL = np.concatenate((wL, wL2))
+                 cL = np.concatenate((cL, cL2))
+                 ch = np.concatenate((ch, ch2))
+                 wh = np.concatenate((wh, wh2))
+                 dates = np.concatenate((dates, dates2))
 
             limitquery = True
         except IndexError:
@@ -180,7 +199,7 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     plt.close(plt.gcf())
     
         
-    fig = plt.figure(facecolor=[1,1,1],figsize=(10,6))
+    fig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
     fig.set_label(msid.upper())
     ax = fig.add_axes([fig_w_start, fig_h_start, fig_width, fig_height])
     ax.hold(True)
@@ -210,7 +229,7 @@ def gen_figure(msids, group_name):
         if i < len(options) - 1:
             msid_select.value=options[i + 1]
 
-    dummyfig = plt.figure(facecolor=[1,1,1],figsize=(12,6))
+    dummyfig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
     msid_select = Select(description='MSID:',options=msids, visible=True, padding=4)
     button_next_msid = Button(description='Next', padding=4)
     button_next_msid.on_click(select_next_msid)
@@ -247,3 +266,8 @@ def gen_figure(msids, group_name):
     tabs.set_title(2, 'Misc.')
 
     display(tabs)
+
+
+
+
+
