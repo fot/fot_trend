@@ -34,7 +34,7 @@ def find_span_indices(dval):
     starts = np.where(starts)[0]
     stops = np.where(stops)[0]
     
-    return zip(starts, stops)
+    return list(zip(starts, stops))
 
 
 def find_time_spans(times, inds):
@@ -701,8 +701,8 @@ class MSIDTrend(object):
             else:
 
                 crossdate = None
-                print('Slope for %s is %e, so no %s limit cross' %
-                      (self.msid, p[0], thresholdtype))
+                print(('Slope for %s is %e, so no %s limit cross' %
+                      (self.msid, p[0], thresholdtype)))
 
         if thresholdtype == 'warning_low' or thresholdtype == 'caution_low':
             # If a lower limit threshold is used, then fit the line to the
@@ -719,8 +719,8 @@ class MSIDTrend(object):
             else:
 
                 crossdate = None
-                print('Slope for %s is %e, so no %s limit cross' %
-                      (self.msid, p[0], thresholdtype))
+                print(('Slope for %s is %e, so no %s limit cross' %
+                      (self.msid, p[0], thresholdtype)))
 
         return crossdate
 

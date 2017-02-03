@@ -11,7 +11,7 @@ import warnings
 from Chandra.Time import DateTime
 from Ska.engarchive import fetch_eng as fetch
 
-from plot_cxctime_custom import *
+from .plot_cxctime_custom import *
 home = expanduser("~")
 sys.path.append(home + '/AXAFLIB/pylimmon/')
 import pylimmon
@@ -137,7 +137,7 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     msid = msid.lower()
 
     tstart = DateTime(tstart).secs
-    if 'none' in unicode(tstop).lower():
+    if 'none' in str(tstop).lower():
         tstop = DateTime().secs
     else:
         tstop = DateTime(tstop).secs
