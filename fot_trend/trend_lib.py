@@ -495,13 +495,13 @@ class MSIDTrend(object):
         telem.mins = telem.mins[keep]
         telem.means = telem.means[keep]
 
-        if '4oavobat' in msid.lower():
-            ind = telem.times > DateTime('2014:342:16:29:14.500').secs
-            telem.vals[ind] = 50 + 2 * (telem.vals[ind] - 50)
-            telem.maxes[ind] = 50 + 2 * (telem.maxes[ind] - 50)
-            telem.mins[ind] = 50 + 2 * (telem.mins[ind] - 50)
-            telem.means[ind] = 50 + 2 * (telem.means[ind] - 50)
-            print('Fixed 4oavobat calibration data in ska engineering archive!!!\n')
+        # if '4oavobat' in msid.lower():
+        #     ind = telem.times > DateTime('2014:342:16:29:14.500').secs
+        #     telem.vals[ind] = 50 + 2 * (telem.vals[ind] - 50)
+        #     telem.maxes[ind] = 50 + 2 * (telem.maxes[ind] - 50)
+        #     telem.mins[ind] = 50 + 2 * (telem.mins[ind] - 50)
+        #     telem.means[ind] = 50 + 2 * (telem.means[ind] - 50)
+        #     print('Fixed 4oavobat calibration data in ska engineering archive!!!\n')
 
         if self.removeoutliers:
             keepmean = self.filter_outliers(telem.means)
