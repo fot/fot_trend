@@ -23,9 +23,9 @@ lightfont = font_manager.FontProperties(weight='light')
 def thin_dataset(data, num=2000, kind='both'):
     ''' Reduce dataset size.
     
+    :param num: the number of blocks
     :param kind: Classification of returned indices per block, 'max', 'min', or 'both'
     
-    num is the number of blocks
     n is the block length
     '''
     if num > len(data) * 0.5:
@@ -33,14 +33,15 @@ def thin_dataset(data, num=2000, kind='both'):
         return np.arange(len(data)), np.arange(len(data)), 1
 
     kind = kind.lower()
-    n = len(data) / num
-    blocks = int(len(data) / float(n)) # number of whole blocks
-    padlen = len(data) - blocks * n # number of numeric elements in partial block
+    n = int(len(data) / num)
+    blocks = int(len(data) / n)  # number of whole blocks
+    padlen = len(data) - blocks * n  # number of numeric elements in partial block
     if padlen > 0:
         blocks = blocks + 1
-        b = np.hstack((data, np.array([np.nan,] * (n - padlen)))) # fill in with nans
+        b = np.hstack((data, np.array([np.nan, ] * (n - padlen))))  # fill in with nans
     else:
         b = np.copy(data)
+
     chunks = np.reshape(b,(blocks, n))
     maxinds = np.nanargmax(chunks, axis=1)
     mininds = np.nanargmin(chunks, axis=1)
@@ -150,9 +151,13 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
         good = np.array([True] * len(data.times))
     good = np.where(good)[0]
 
-    if hasattr(data, 'tdb'):
+    try:
+        # The data object has the `tdb` attribute, however calling that attribute will result
+        # in an error if there is no entry in the TDB. Simply using the hasattr command will
+        # trigger the error if the entry is missing.
+        hasattr(data, 'tdb')
         title = '{}: {}'.format(msid.upper(), data.tdb.technical_name)
-    else:
+    except:
         title = msid.upper()
     
     if data.unit:
