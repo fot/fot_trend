@@ -725,3 +725,33 @@ class MSIDTrend(object):
         return crossdate
 
 
+def DoubleMADsFromMedian(x, zeromadaction="warn"):
+    """ Median Absolute Deviation Calculation    
+
+    :param x: 1 dimenional data array
+    :param zeromadaction: determines the action in the event of an MAD of zero, anything other than 'warn' will throw an exception
+
+    """
+    
+    def DoubleMAD(x, zeromadaction="warn"):
+        """ Core Median Absolute Deviation Calculation    
+        """
+
+        m = np.median(x)
+        absdev = np.abs(x - m)
+        leftmad = np.median(np.abs(x[x<=m]))
+        rightmad = np.median(np.abs(x[x>=m]))
+        if (leftmad == 0) or (rightmad == 0):
+            if zeromadaction.lower() == 'warn':
+                print('Median absolute deviation is zero, this may cause problems.')
+            else:
+                raise ValueError('Median absolute deviation is zero, this may cause problems.')
+        return leftmad, rightmad
+    
+    twosidedmad = DoubleMAD(x, zeromadaction)
+    m = np.median(x)
+    xmad = np.ones(len(x)) * twosidedmad[0]
+    xmad[x > m] = twosidedmad[1]
+    maddistance = np.abs(x - m) / xmad
+    maddistance[x==m] = 0
+    return maddistance
