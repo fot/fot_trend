@@ -4,7 +4,7 @@ from os.path import expanduser
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.font_manager as font_manager
-from ipywidgets import interact, interactive, Select, Text, Checkbox, Tab, Box, HBox, Button
+from ipywidgets import interact, interactive, Select, Text, Checkbox, Tab, Box, Button
 from IPython.display import clear_output, display, HTML
 import warnings
 
@@ -17,7 +17,24 @@ sys.path.append(home + '/AXAFLIB/pylimmon/')
 import pylimmon
 sys.path.append(home + '/AXAFLIB/fot_bad_intervals/')
 from fot_bad_intervals import get_keep_ind as keepind
-lightfont = font_manager.FontProperties(weight='light')
+# lightfont = font_manager.FontProperties(weight='light')
+
+
+# HBOX seems to be broken in the latest version of ipywidgets, redefining them here seems to work
+def VBox(*pargs, **kwargs):
+    """Displays multiple widgets vertically using the flexible box model."""
+    box = Box(*pargs, **kwargs)
+    box.layout.display = 'flex'
+    box.layout.flex_flow = 'column'
+    box.layout.align_items = 'stretch'
+    return box
+
+def HBox(*pargs, **kwargs):
+    """Displays multiple widgets horizontally using the flexible box model."""
+    box = Box(*pargs, **kwargs)
+    box.layout.display = 'flex'
+    box.layout.align_items = 'stretch'
+    return box
 
 
 def thin_dataset(data, num=2000, kind='both'):
@@ -80,7 +97,6 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
                 _ = ax.step(plotdate_dates, wh, where='post', color='r', zorder=3)
             
     def update_plot_data(fig, ax):
-            
         ticklocs, _, _ = plot_cxctime(data.times[good], data.vals[good], fmt='-', 
                                          fig=fig, ax=ax, color='#555555', zorder=2)
 
@@ -164,8 +180,8 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
         units = data.unit
     else:
         units = ''
-
-    wide = ['OOBTHR08', 'OOBTHR09', 'OOBTHR10', 'OOBTHR11', 'OOBTHR12', 'OOBTHR13', 'OOBTHR14',
+    wide = ['OOBTHR02', 'OOBTHR03', 'OOBTHR04', 'OOBTHR05', 'OOBTHR06', 'OOBTHR07',
+            'OOBTHR08', 'OOBTHR09', 'OOBTHR10', 'OOBTHR11', 'OOBTHR12', 'OOBTHR13', 'OOBTHR14',
             'OOBTHR15', 'OOBTHR17', 'OOBTHR18', 'OOBTHR19', 'OOBTHR20', 'OOBTHR21', 'OOBTHR22',
             'OOBTHR23', 'OOBTHR24', 'OOBTHR25', 'OOBTHR26', 'OOBTHR27', 'OOBTHR28', 'OOBTHR29',
             'OOBTHR30', 'OOBTHR31', 'OOBTHR33', 'OOBTHR34', 'OOBTHR35', 'OOBTHR36', 'OOBTHR37',
@@ -201,28 +217,26 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     fig_height = 1. - fig_h_start - 0.1
     fig_width = 1. - fig_w_start - 0.1
 
-    plt.close(plt.gcf())
-    
-        
-    fig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
+    # plt.close(plt.gcf())
+    # fig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
+
+    fig = plt.gcf()
+    fig.clf()
     fig.set_label(msid.upper())
     ax = fig.add_axes([fig_w_start, fig_h_start, fig_width, fig_height])
     ax.hold(True)
     _ = ax.set_xlim(cxctime2plotdate(DateTime([tstart, tstop]).secs))
 
     _ = ax.grid(True)
-    _ = ax.set_ylabel(units, fontsize=22, fontproperties=lightfont)
-    _ = ax.set_xlabel('Time (Seconds)', fontsize=22, fontproperties=lightfont)
+    _ = ax.set_ylabel(units, fontsize=22)
+    _ = ax.set_xlabel('Time (Seconds)', fontsize=22)
     _ = ax.set_title(title, fontsize=30, y=1.03)
     _ = ax.tick_params(axis='both', which='major', labelsize=20)
     plt.setp(ax.xaxis.get_majorticklabels(), rotation_mode='anchor', ha='right')
-
     
 #     ax.callbacks.connect('xlim_changed', update_plot_data)
-    
 
     update_plot_data(fig, ax)
-
 
 
 
@@ -234,7 +248,7 @@ def gen_figure(msids, group_name):
         if i < len(options) - 1:
             msid_select.value=options[i + 1]
 
-    dummyfig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
+
     msid_select = Select(description='MSID:',options=msids, visible=True, padding=4)
     button_next_msid = Button(description='Next', padding=4)
     button_next_msid.on_click(select_next_msid)
@@ -271,8 +285,5 @@ def gen_figure(msids, group_name):
     tabs.set_title(2, 'Misc.')
 
     display(tabs)
-
-
-
-
+    dummyfig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
 

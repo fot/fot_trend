@@ -260,11 +260,17 @@ def calc_daily_stats(t, dmin, dmean, dmax):
 
     """
 
-    daystart = DateTime(DateTime(t[0]).date[:8] + ':00:00:00.000').secs
-    daystop = DateTime(DateTime(t[-1]).date[:8] + ':00:00:00.000').secs
+    # Back up a half day to provide buffer to account for leap seconds, then find the end of each day
+    daystart = DateTime(DateTime(t[0]).date[:8] + ':00:00:00.000').secs - 3600 * 12
+    daystop = DateTime(DateTime(t[-1]).date[:8] + ':00:00:00.000').secs - 3600 * 12
 
     daysecs = 3600.* 24.
-    days = np.arange(daystart, daystop + daysecs, daysecs)
+    middays = np.arange(daystart, daystop + daysecs, daysecs)
+
+    dates = [DateTime(d).date.split(':') for d in middays]
+    days = [DateTime('{:s}:{:03d}:00:00:00'.format(date[0], int(date[1])+1)).secs for date in dates]
+    days = np.array(days)
+
     # daybins = np.digitize(t, bins=days)
     # b = np.bincount(daybins -1)
     # c = np.hstack((0, np.cumsum(b)))
@@ -724,4 +730,38 @@ class MSIDTrend(object):
 
         return crossdate
 
+
+def DoubleMADsFromMedian(x, zeromadaction="warn"):
+    """ Median Absolute Deviation Calculation    
+
+    :param x: 1 dimenional data array
+    :param zeromadaction: determines the action in the event of an MAD of zero, anything other
+        than 'warn' will throw an exception
+
+    Code is derived from examples shown here:
+    http://eurekastatistics.com/using-the-median-absolute-deviation-to-find-outliers/
+    """
+    
+    def DoubleMAD(x, zeromadaction="warn"):
+        """ Core Median Absolute Deviation Calculation    
+        """
+
+        m = np.median(x)
+        absdev = np.abs(x - m)
+        leftmad = np.median(np.abs(x[x<=m]))
+        rightmad = np.median(np.abs(x[x>=m]))
+        if (leftmad == 0) or (rightmad == 0):
+            if zeromadaction.lower() == 'warn':
+                print('Median absolute deviation is zero, this may cause problems.')
+            else:
+                raise ValueError('Median absolute deviation is zero, this may cause problems.')
+        return leftmad, rightmad
+    
+    twosidedmad = DoubleMAD(x, zeromadaction)
+    m = np.median(x)
+    xmad = np.ones(len(x)) * twosidedmad[0]
+    xmad[x > m] = twosidedmad[1]
+    maddistance = np.abs(x - m) / xmad
+    maddistance[x==m] = 0
+    return maddistance
 
