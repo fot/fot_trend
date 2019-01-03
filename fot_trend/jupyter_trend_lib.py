@@ -19,6 +19,8 @@ sys.path.append(home + '/AXAFLIB/fot_bad_intervals/')
 from fot_bad_intervals import get_keep_ind as keepind
 # lightfont = font_manager.FontProperties(weight='light')
 
+import maude
+
 
 # HBOX seems to be broken in the latest version of ipywidgets, redefining them here seems to work
 def VBox(*pargs, **kwargs):
@@ -28,6 +30,7 @@ def VBox(*pargs, **kwargs):
     box.layout.flex_flow = 'column'
     box.layout.align_items = 'stretch'
     return box
+
 
 def HBox(*pargs, **kwargs):
     """Displays multiple widgets horizontally using the flexible box model."""
@@ -77,12 +80,12 @@ def thin_dataset(data, num=2000, kind='both'):
     elif 'min' in kind:
         ind = indmin
     #       extrema indices, block start indices,     block length
-    return  np.sort(ind),    np.arange(0, len(b), n), n
+    return  np.sort(ind), np.arange(0, len(b), n), n
 
 
 def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=None, 
               stat='daily', plot_warning_low=False, plot_caution_low=False, 
-              plot_caution_high=True, plot_warning_high=True, remove_bads=True):
+              plot_caution_high=True, plot_warning_high=True, remove_bads=True, maudefill=False):
 
     def add_limit_lines():
         if limitquery:
@@ -97,8 +100,8 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
                 _ = ax.step(plotdate_dates, wh, where='post', color='r', zorder=3)
             
     def update_plot_data(fig, ax):
-        ticklocs, _, _ = plot_cxctime(data.times[good], data.vals[good], fmt='-', 
-                                         fig=fig, ax=ax, color='#555555', zorder=2)
+        ticklocs, _, _ = plot_cxctime(data.times[good], data.vals[good], fmt='-', fig=fig, ax=ax, color='#555555',
+                                      zorder=2)
 
         if 'none' not in statstr:
 
@@ -115,7 +118,7 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
                 minvals = np.interp(times, times_min, minvals)
 
             else:
-                times = data.times[good]
+                times = data.cxctimes[good]
                 maxvals = data.maxes[good]
                 minvals = data.mins[good]
             
@@ -128,6 +131,10 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
 #             ax.plot(times_min, minvals, 'r')
 #             ax.plot(data.cxctimes[good], data.maxes[good], 'b')
 #             ax.plot(data.cxctimes[good], data.mins[good], 'b')
+            
+            # Added to fill in MAUDE data
+            if maudefill and maudedata is not None:
+                _ = ax.plot(maudedata['data'][0]['cxctimes'], maudedata['data'][0]['values'], color='blue', zorder=2)
 
         add_limit_lines()
         
@@ -146,7 +153,6 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
         dates =  np.array(limdict['limsets'][0]['times'])[enabled]
         return wL, cL, ch, wh, dates
 
-        
     if 'none' in str(stat).lower():
         stat = None
         
@@ -160,7 +166,14 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
         tstop = DateTime(tstop).secs
     data = fetch.Msid(msid, tstart, tstop, stat=stat)
     data.cxctimes = cxctime2plotdate(data.times)
-    
+
+    if maudefill:
+        # This may fail for a large number of reasons, so just use a blanket except.
+        # This last bit of data is often not critical anyway.
+        # try:
+        maudedata = maude.get_msids(msid, data.times[-1])
+        maudedata['data'][0]['cxctimes'] = cxctime2plotdate(maudedata['data'][0]['times'])
+
     if remove_bads:
         good = keepind(data.times, group, msid, stat)
     else:
@@ -217,9 +230,6 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     fig_height = 1. - fig_h_start - 0.1
     fig_width = 1. - fig_w_start - 0.1
 
-    # plt.close(plt.gcf())
-    # fig = plt.figure(facecolor=[1,1,1],figsize=(14,8))
-
     fig = plt.gcf()
     fig.clf()
     fig.set_label(msid.upper())
@@ -239,15 +249,13 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     update_plot_data(fig, ax)
 
 
-
-def gen_figure(msids, group_name):
-    def select_next_msid(junk):
+def gen_figure(msids, group_name, maudefill=False):
+    def select_next_msid():
         current_msid = msid_select.value
         options = msid_select.options
         i = options.index(current_msid)
         if i < len(options) - 1:
             msid_select.value=options[i + 1]
-
 
     msid_select = Select(description='MSID:',options=msids, visible=True, padding=4)
     button_next_msid = Button(description='Next', padding=4)
@@ -276,7 +284,7 @@ def gen_figure(msids, group_name):
 
     q = interactive(plot_msid_interactive, msid=msid_select, group=group_select, tstart=t1, tstop=t2, stat=stat_select,
                  plot_warning_low=wL, plot_caution_low=cL, plot_caution_high=cH, 
-                 plot_warning_high=wH, remove_bads=filter_bads)
+                 plot_warning_high=wH, remove_bads=filter_bads, maudefill=maudefill)
 
     tabs = Tab(children=[page1, page2, page3])
 
