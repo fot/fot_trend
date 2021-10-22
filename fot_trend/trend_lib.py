@@ -42,6 +42,9 @@ def find_time_spans(times, inds):
 
 
 def filter_stats(msid, t1, t2, dt=0.256, statemsid=None, eqstate=None, rangemsid=None, inrange=None):
+    """ Filter MSIDs based on other state or other numeric MSIDs
+
+    """
     msids = [msid,]
     if statemsid:
         msids.append(statemsid)
@@ -490,7 +493,11 @@ class MSIDTrend(object):
             msid = self.msid
         telem = fetch.Msid(msid, self.tstart, self.tstop, stat='daily')
 
-        keep = fot_bad_intervals.get_keep_ind(telem.times, None, msid.lower(), 'daily')
+        if (msid.lower()[0] == '4') or ('ohr' in msid.lower()) or (msid.lower()[:2] == 'oo'):
+            keep = fot_bad_intervals.get_keep_ind(telem.times, 'tel', msid.lower(), 'daily')
+        else:
+            keep = fot_bad_intervals.get_keep_ind(telem.times, None, msid.lower(), 'daily')
+            
         if isnumeric(msid[0]):
             if int(msid[0]) < 4:
                 keep2 = filter_out_more_bad_data(telem.times)

@@ -234,7 +234,6 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
     fig.clf()
     fig.set_label(msid.upper())
     ax = fig.add_axes([fig_w_start, fig_h_start, fig_width, fig_height])
-    ax.hold(True)
     _ = ax.set_xlim(cxctime2plotdate(DateTime([tstart, tstop]).secs))
 
     _ = ax.grid(True)
@@ -250,7 +249,7 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
 
 
 def gen_figure(msids, group_name, maudefill=False):
-    def select_next_msid():
+    def select_next_msid(junk):
         current_msid = msid_select.value
         options = msid_select.options
         i = options.index(current_msid)
