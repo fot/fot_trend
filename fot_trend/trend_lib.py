@@ -4,7 +4,8 @@ import sqlite3
 import sys
 from os.path import expanduser
 
-from Chandra.Time import DateTime
+# from Chandra.Time import DateTime
+from cxotime import CxoTime as DateTime
 from Ska.engarchive import fetch_eng as fetch
 
 home = expanduser("~")
@@ -14,6 +15,8 @@ import pylimmon
 addthispath = home + '/AXAFLIB/fot_bad_intervals/'
 sys.path.append(addthispath)
 import fot_bad_intervals
+
+# np.random.seed(42)
 
 
 def find_span_indices(dval):
@@ -41,7 +44,7 @@ def find_time_spans(times, inds):
     return [(DateTime(times[ind[0]]).date, DateTime(times[ind[1]]).date) for ind in inds]
 
 
-def filter_stats(msid, t1, t2, dt=0.256, statemsid=None, eqstate=None, rangemsid=None, inrange=None):
+def filter_stats(msid, t1, t2, dt=0.256, statemsid=None, eqstate=None, rangemsid=None, inrange=None, time_pad=3600):
     """ Filter MSIDs based on other state or other numeric MSIDs
 
     """
@@ -446,7 +449,8 @@ class MSIDTrend(object):
 
     def __init__(self, msid, tstart='2000:001:00:00:00', tstop=None,
                  trendmonths=36, numstddev=2, removeoutliers=True,
-                 maxoutlierstddev=5):
+                 maxoutlierstddev=5, filter_monthly_data=False,
+                 remove_safing_actions=True):
 
         self.msid = msid
         self.tstart = DateTime(tstart).date
@@ -460,6 +464,9 @@ class MSIDTrend(object):
         self.numstddev = numstddev
         self.removeoutliers = removeoutliers
         self.maxoutlierstddev = maxoutlierstddev
+        self.filter_monthly_data = filter_monthly_data
+        self.remove_safing_actions = remove_safing_actions
+
         self.telem = self._get_monthly_telemetry()
         self.safetylimits = pylimmon.get_safety_limits(msid)
 
@@ -502,11 +509,18 @@ class MSIDTrend(object):
             if int(msid[0]) < 4:
                 keep2 = filter_out_more_bad_data(telem.times)
                 keep = keep & keep2
+
+        before_after_pad = (24*3600, 24*3600)
+        keep_not_safing = fot_bad_intervals.filter_safing_actions(telem.times, 'daily', 
+            safe_modes=True, nsm_modes=True, pad=before_after_pad, transitions_only=False, tpad=None)
+        keep = keep & keep_not_safing
+
         telem.times = telem.times[keep]
         telem.vals = telem.vals[keep]
         telem.maxes = telem.maxes[keep]
         telem.mins = telem.mins[keep]
         telem.means = telem.means[keep]
+
 
         # if '4oavobat' in msid.lower():
         #     ind = telem.times > DateTime('2014:342:16:29:14.500').secs
@@ -531,6 +545,7 @@ class MSIDTrend(object):
         keep = keepmean & keepmax & keepmin
         telem.keep = keep
 
+
         # Calculate the mean time value for each 30 day period going backwards.
         #
         # Monthly values are calculated going backwards because it is more
@@ -547,18 +562,33 @@ class MSIDTrend(object):
         telem.monthlytimes = [np.mean(telem.times[keep][n:n + 30]) for n in
                               range(days - 30, 0, -30)]
         telem.monthlytimes.reverse()
+        telem.monthlytimes = np.array(telem.monthlytimes)
 
         telem.monthlymaxes = [np.max(telem.maxes[keep][n:n + 30]) for n in
                               range(days - 30, 0, -30)]
         telem.monthlymaxes.reverse()
+        telem.monthlymaxes = np.array(telem.monthlymaxes)
 
         telem.monthlymins = [np.min(telem.mins[keep][n:n + 30]) for n in
                              range(days - 30, 0, -30)]
         telem.monthlymins.reverse()
+        telem.monthlymins = np.array(telem.monthlymins)
 
         telem.monthlymeans = [np.mean(np.double(telem.means[keep][n:n + 30]))
                               for n in range(days - 30, 0, -30)]
         telem.monthlymeans.reverse()
+        telem.monthlymeans = np.array(telem.monthlymeans)
+
+        if self.filter_monthly_data:
+            keep_max = fot_bad_intervals.filter_outliers(telem.monthlymaxes)
+            keep_min = fot_bad_intervals.filter_outliers(telem.monthlymins)
+            keep_mean = fot_bad_intervals.filter_outliers(telem.monthlymeans)
+
+            keep = keep_max & keep_min & keep_mean
+            telem.montlytimes = telem.monthlytimes[keep]
+            telem.monthlymaxes = telem.monthlymaxes[keep]
+            telem.monthlymins = telem.monthlymins[keep]
+            telem.monthlymeans = telem.monthlymeans[keep]
 
         return telem
 
@@ -593,6 +623,7 @@ class MSIDTrend(object):
 
         return (p, stddev)
 
+
     def get_prediction(self, date, maxminmean='max'):
         """ Return the prediction at one or more times for the requested data.
 
@@ -626,6 +657,7 @@ class MSIDTrend(object):
             p, stddev = self.get_polyfit_line(self.telem.monthlymeans)
 
         return np.polyval(p, date)
+
 
     def get_limit_intercept(self, thresholdtype, limittype='safety'):
         """ Return the date when the data is expected to reach a limit.
@@ -734,6 +766,206 @@ class MSIDTrend(object):
                 crossdate = None
                 print(('Slope for %s is %e, so no %s limit cross' %
                       (self.msid, p[0], thresholdtype)))
+
+        return crossdate
+
+
+    def get_resampled_polyfit_line(self, data, drop_fraction=0.5, num_passes=50):
+        """ Return the median linear curve fit and standard deviation for the data
+            using resampled monthly data.
+
+        Return the coefficients for the linear curve fit through
+        the last N months of data. The data is expected to be either the
+        monthly maximum, monthly minimum, or monthly mean.Also return the
+        standard deviation of the data about this curve fit.
+
+        The number of months used is specified using the trendmonths input
+        argument.
+        """
+
+        # Select the last N months of data
+        datarange = data[-self.trendmonths:]
+        timerange = self.telem.monthlytimes[-self.trendmonths:]
+
+        coef = []
+        stddev = []
+        # Calculate the coefficients
+        for n in range(num_passes):
+            random_ind = np.random.randint(0, len(timerange), int((1 - drop_fraction) * len(timerange)))
+            p = np.polyfit(timerange[random_ind], datarange[random_ind], 1)
+            coef.append(tuple(p))
+            std = np.std(datarange[random_ind] - np.polyval(p, timerange[random_ind]))
+
+            stddev.append(std)
+
+        # coef = np.array(tuple(coef), dtype=[('intercept', float), ('slope', float)])
+        coef = np.array(coef)
+        stddev = np.array(stddev)
+
+        # self.resampled_polyfit_coefficients = coef
+        # self.resampled_standard_deviations = stddev
+
+        median_p = (np.median(coef[:,0]), np.median(coef[:,1]))
+        median_stddev = np.median(stddev)
+
+        return coef, stddev, median_p, median_stddev
+
+
+    def get_resampled_prediction(self, date, maxminmean='max', drop_fraction=0.5, num_passes=50):
+        """ Return the prediction at one or more times for the requested data.
+
+        The date passed into this function can be either a
+        Chandra.Time.DateTime object, or a compatible input argument for a
+        Chandra.time.DateTime class.
+
+        The maxminmean input argument is case insensitive but must be one of
+        three valid strings:
+            min
+            max
+            mean
+        """
+
+        # Ensure the date is a date object (either a single or multiple
+        # element object) and convert it to seconds
+        date = DateTime(date).secs
+
+        # Return the coeficients and associated standard deviation for the
+        # requested linear curve fit.
+        if maxminmean.lower() == 'max':
+
+            p, stddev, median_p, median_stddev = self.get_resampled_polyfit_line(self.telem.monthlymaxes, 
+                drop_fraction=drop_fraction, num_passes=num_passes)
+
+        elif maxminmean.lower() == 'min':
+
+            p, stddev, median_p, median_stddev = self.get_resampled_polyfit_line(self.telem.monthlymins, 
+                drop_fraction=drop_fraction, num_passes=num_passes)
+
+        elif maxminmean.lower() == 'mean':
+
+            p, stddev, median_p, median_stddev = self.get_resampled_polyfit_line(self.telem.monthlymeans, 
+                drop_fraction=drop_fraction, num_passes=num_passes)
+
+
+        return np.polyval(p, date)
+
+
+    def get_resampled_limit_intercept(self, thresholdtype, limittype='safety', drop_fraction=0.5, num_passes=50):
+        """ Return the date when the data is expected to reach a limit.
+
+        Valid values for thresholdtype are:
+            warning_low
+            caution_low
+            caution_high
+            warning_high
+        """
+
+        # Ensure the thresholdtype is lower case, since all such keys to the
+        # safetylimits dict are lower case.
+        thresholdtype = thresholdtype.lower()
+
+        def getdate(self, p, stddev, thresholdtype, limittype):
+            """ Return the date when the specified threshold is reached.
+
+            p and stddev are the linear curve fit parameters and standard
+            deviation output from get_polyfit_line.
+
+            thresholdtype has three valid input strings:
+                warning_low
+                caution_low
+                caution_high
+                warning_high
+
+            limittype has two valid input strings:
+                safety
+                trending
+
+            There are two ways one can incorporate a safety factor, one is to
+            modify the threshold, the other is to modify the linear curve fit.
+            In this case the threshold is modified by either subtracting or
+            adding a multiple of the standard deviation depending on the type of
+            threshold the user is interested in.
+
+            If there is a time when the threshold is reached, then a date
+            string is returned, otherwise None is returned. Keep in mind that
+            if None is input into a Chandra.Time.DateTime object, it returns
+            the current time.
+            """
+
+            # Get the threshold value and include the appropriate safety factor
+            if limittype.lower() == 'trending':
+                if thresholdtype == 'warning_high' or \
+                                thresholdtype == 'caution_high':
+
+                    threshold = (self.trendinglimits[thresholdtype] - stddev *
+                                 self.numstddev)
+                else:
+                    threshold = (self.trendinglimits[thresholdtype] + stddev *
+                                 self.numstddev)
+            else:
+                if thresholdtype == 'warning_high' or \
+                                thresholdtype == 'caution_high':
+
+                    threshold = (self.safetylimits[thresholdtype] - stddev *
+                                 self.numstddev)
+                else:
+                    threshold = (self.safetylimits[thresholdtype] + stddev *
+                                 self.numstddev)
+
+            # Calculate the date at which the modified threshold is reached
+            seconds = (threshold - p[1]) / p[0]
+            if (seconds < DateTime('3000:001:00:00:00').secs) & (seconds > DateTime('1000:001:00:00:00').secs):
+                crossdate = DateTime(seconds).date
+
+            else:
+                crossdate = '3000:001:00:00:00'
+
+            return crossdate
+
+
+        if thresholdtype == 'warning_high' or thresholdtype == 'caution_high':
+            # If an upper limit threshold is used, then fit the line to the
+            # monthly maximum data.
+
+            ps, stddevs, median_p, median_stddev = self.get_resampled_polyfit_line(self.telem.monthlymaxes, 
+                drop_fraction=drop_fraction, num_passes=num_passes)
+
+
+            # import code
+            # code.interact(local=dict(globals(), **locals())) 
+
+            # If an upper limit threshold is used, then there is no cross date
+            # if the slope is negative.
+            if median_p[0] > 0:
+
+                crossdates = [getdate(self, p, stddev, thresholdtype, limittype) for p, stddev in zip(ps, stddevs)]
+                crossdate = DateTime(np.median([DateTime(d).secs for d in crossdates if d is not None])).date
+
+            else:
+
+                crossdate = None
+                print(('Slope for %s is %e, so no %s limit cross' %
+                      (self.msid, median_p[0], thresholdtype)))
+
+        if thresholdtype == 'warning_low' or thresholdtype == 'caution_low':
+            # If a lower limit threshold is used, then fit the line to the
+            # monthly minimum data.
+
+            ps, stddevs, median_p, median_stddev = self.get_resampled_polyfit_line(self.telem.monthlymins, 
+                drop_fraction=drop_fraction, num_passes=num_passes)
+
+            # If a lower limit threshold is used, then there is no cross date
+            # if the slope is positive.
+            if median_p[0] < 0:
+
+                crossdates = [getdate(self, p, stddev, thresholdtype, limittype) for p, stddev in zip(ps, stddevs)]
+                crossdate = DateTime(np.median([DateTime(d).secs for d in crossdates if d is not None])).date
+
+            else:
+
+                crossdate = None
+                print(('Slope for %s is %e, so no %s limit cross' %
+                      (self.msid, median_p[0], thresholdtype)))
 
         return crossdate
 
