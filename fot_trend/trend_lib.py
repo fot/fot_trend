@@ -267,20 +267,28 @@ def calc_daily_stats(t, dmin, dmean, dmax):
     """
 
     # Back up a half day to provide buffer to account for leap seconds, then find the end of each day
-    daystart = DateTime(DateTime(t[0]).date[:8] + ':00:00:00.000').secs - 3600 * 12
-    daystop = DateTime(DateTime(t[-1]).date[:8] + ':00:00:00.000').secs - 3600 * 12
+    # daystart = DateTime(DateTime(t[0]).date[:8] + ':00:00:00.000').secs - 3600 * 12
+    # daystop = DateTime(DateTime(t[-1]).date[:8] + ':00:00:00.000').secs - 3600 * 12
 
-    daysecs = 3600.* 24.
-    middays = np.arange(daystart, daystop + daysecs, daysecs)
+    # daysecs = 3600.* 24.
+    # middays = np.arange(daystart, daystop + daysecs, daysecs)
 
-    dates = [DateTime(d).date.split(':') for d in middays]
-    days = [DateTime('{:s}:{:03d}:00:00:00'.format(date[0], int(date[1])+1)).secs for date in dates]
-    days = np.array(days)
+    # try:
+    #     dates = [DateTime(d).date.split(':') for d in middays]
+    #     days = [DateTime('{:s}:{:03d}:00:00:00'.format(date[0], int(date[1])+1)).secs for date in dates]
+    #     days = np.array(days)
+    # except:
+    #     import code
+    #     vars = globals().copy()
+    #     vars.update(locals())
+    #     shell = code.InteractiveConsole(vars)
+    #     shell.interact()
 
-    # daybins = np.digitize(t, bins=days)
-    # b = np.bincount(daybins -1)
-    # c = np.hstack((0, np.cumsum(b)))
-    # ind = [(k1, k2-1) for k1, k2 in zip(c[:-1], c[1:])]
+
+    day_grid = np.arange(t[0], t[-1], 3600 * 12)
+    day_set = list(set([date[:8] for date in DateTime(day_grid).date]))
+    days = np.array(DateTime(day_set).secs)
+    days.sort()
     ind = digitizebins(t, days)
 
     daymins = np.array([np.nanmin(dmin[i[0]:(i[-1]+1)]) if i[-1] - i[0] > 0 else np.nan for i in ind])
