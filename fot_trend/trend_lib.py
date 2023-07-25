@@ -6,7 +6,7 @@ from os.path import expanduser
 
 # from Chandra.Time import DateTime
 from cxotime import CxoTime as DateTime
-from Ska.engarchive import fetch_eng as fetch
+from cheta import fetch_eng
 
 home = expanduser("~")
 sys.path.append(home + '/AXAFLIB/pylimmon/')
@@ -55,14 +55,14 @@ def filter_stats(msid, t1, t2, dt=0.256, statemsid=None, eqstate=None, rangemsid
         msids.append(rangemsid)
 
     if len(msids) == 1:
-        data = fetch.Msid(msid, t1, t2, stat=None)
+        data = fetch_eng.Msid(msid, t1, t2, stat=None)
         data.interpolate(dt=dt)
         datavals = data.vals
         datatimes = data.times
         keep = np.ones(len(data.times)) == 1
     
     if len(msids) > 1:
-        data = fetch.Msidset(msids, t1, t2, stat=None)
+        data = fetch_eng.Msidset(msids, t1, t2, stat=None)
         data.interpolate(dt=dt)
         keep = np.ones(len(data.times)) == 1
 
@@ -506,7 +506,7 @@ class MSIDTrend(object):
             msid = self.msid[:8]
         else:
             msid = self.msid
-        telem = fetch.Msid(msid, self.tstart, self.tstop, stat='daily')
+        telem = fetch_eng.Msid(msid, self.tstart, self.tstop, stat='daily')
 
         if (msid.lower()[0] == '4') or ('ohr' in msid.lower()) or (msid.lower()[:2] == 'oo'):
             keep = fot_bad_intervals.get_keep_ind(telem.times, 'tel', msid.lower(), 'daily')
