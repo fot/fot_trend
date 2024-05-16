@@ -4,10 +4,12 @@ import datetime
 from matplotlib import pyplot
 from matplotlib.dates import (YearLocator, MonthLocator, DayLocator,
                               HourLocator, MinuteLocator, SecondLocator,
-                              DateFormatter, epoch2num)
+                              DateFormatter, date2num)
 from matplotlib.ticker import FixedLocator, FixedFormatter
 import Chandra.Time
 import numpy as np
+from Chandra.Time import DateTime
+
 
 # Default tick locator and format specification for making nice time axes
 #           majorLoc,     major_kwargs, major_fmt, minorLoc, minor_kwargs
@@ -162,7 +164,47 @@ def cxctime2plotdate(times):
     
     # Find the plotdate of first time and use a relative offset from there
     t0 = Chandra.Time.DateTime(times[0]).unix
-    plotdate0 = epoch2num(t0)
+    # plotdate0 = epoch2num(t0)
+    plotdate0 = date2num(datetime.datetime.utcfromtimestamp(t0))
 
     return (np.asarray(times) - times[0]) / 86400. + plotdate0
+
+
+# def cxctime2plotdate(times):
+#     """
+#     Convert input CXC time (sec) to the time base required for the matplotlib
+#     plot_date function (days since start of year 1).
+
+#     For new code, do not use cxctime2plotdate and instead use the plot_date
+#     Time format from cxotime.CxoTime with ``CxoTime(times).plot_date``.
+
+#     :param times: times (any DateTime compatible format or object)
+#     :rtype: plot_date times
+#     """
+#     # Convert times to float array of CXC seconds
+#     if isinstance(times, (DateTime, CxoTime)):
+#         times = times.secs
+#     else:
+#         times = np.asarray(times)
+
+#         # If not floating point then use CxoTime to convert to seconds
+#         if times.dtype.kind != 'f':
+#             times = CxoTime(times).secs
+
+#     shape = times.shape
+
+#     # Zero-length input gives empty output
+#     if shape == (0,):
+#         return np.array([], dtype=np.float64)
+
+#     # Find the plotdate of first time and use a relative offset from there
+#     times = times.ravel()
+#     plotdate0 = date2num(CxoTime(times[0]).datetime)
+#     out = (times - times[0]) / 86400. + plotdate0
+
+#     return out.reshape(shape)
+
+
+
+
         
