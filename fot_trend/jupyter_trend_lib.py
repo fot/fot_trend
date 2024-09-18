@@ -193,14 +193,25 @@ def plot_msid_interactive(msid='aacccdpt', group='sc', tstart='2001:001', tstop=
         units = data.unit
     else:
         units = ''
-    wide = ['OOBTHR02', 'OOBTHR03', 'OOBTHR04', 'OOBTHR05', 'OOBTHR06', 'OOBTHR07',
-            'OOBTHR08', 'OOBTHR09', 'OOBTHR10', 'OOBTHR11', 'OOBTHR12', 'OOBTHR13', 'OOBTHR14',
-            'OOBTHR15', 'OOBTHR17', 'OOBTHR18', 'OOBTHR19', 'OOBTHR20', 'OOBTHR21', 'OOBTHR22',
-            'OOBTHR23', 'OOBTHR24', 'OOBTHR25', 'OOBTHR26', 'OOBTHR27', 'OOBTHR28', 'OOBTHR29',
-            'OOBTHR30', 'OOBTHR31', 'OOBTHR33', 'OOBTHR34', 'OOBTHR35', 'OOBTHR36', 'OOBTHR37',
-            'OOBTHR38', 'OOBTHR39', 'OOBTHR40', 'OOBTHR41', 'OOBTHR44', 'OOBTHR45', 'OOBTHR46',
-            'OOBTHR49', 'OOBTHR50', 'OOBTHR51', 'OOBTHR52', 'OOBTHR53', 'OOBTHR54', '4OAVHRMT',
-            '4OAVOBAT']
+    oba_wide = ['OOBTHR02', 'OOBTHR03', 'OOBTHR04', 'OOBTHR05', 'OOBTHR06', 'OOBTHR07',
+                'OOBTHR08', 'OOBTHR09', 'OOBTHR10', 'OOBTHR11', 'OOBTHR12', 'OOBTHR13', 'OOBTHR14',
+                'OOBTHR15', 'OOBTHR17', 'OOBTHR18', 'OOBTHR19', 'OOBTHR20', 'OOBTHR21', 'OOBTHR22',
+                'OOBTHR23', 'OOBTHR24', 'OOBTHR25', 'OOBTHR26', 'OOBTHR27', 'OOBTHR28', 'OOBTHR29',
+                'OOBTHR30', 'OOBTHR31', 'OOBTHR33', 'OOBTHR34', 'OOBTHR35', 'OOBTHR36', 'OOBTHR37',
+                'OOBTHR38', 'OOBTHR39', 'OOBTHR40', 'OOBTHR41', 'OOBTHR44', 'OOBTHR45', 'OOBTHR46',
+                'OOBTHR49', 'OOBTHR50', 'OOBTHR51', 'OOBTHR52', 'OOBTHR53', 'OOBTHR54', '4OAVHRMT',
+                '4OAVOBAT']
+
+    hrma_wide = ["OHRTHR44", "OHRTHR02", "OHRTHR21", "OHRTHR45", "OHRTHR03", "OHRTHR22", "OHRTHR46",
+                 "OHRTHR23", "OHRTHR04", "OHRTHR47", "OHRTHR49", "OHRTHR24", "OHRTHR05", "OHRTHR06",
+                 "OHRTHR25", "OHRTHR50", "OHRTHR51", "OHRTHR07", "OHRTHR26", "OHRTHR27", "OHRTHR29",
+                 "OHRTHR30", "OHRTHR08", "OHRTHR09", "OHRTHR10", "OHRTHR11", "OHRTHR12", "OHRTHR13",
+                 "OHRTHR14", "OHRTHR18", "OHRTHR20", "OHRTHR31", "OHRTHR33", "OHRTHR34", "OHRTHR35",
+                 "OHRTHR36", "OHRTHR37", "OHRTHR41", "OHRTHR42", "OHRTHR43", "OHRTHR52", "OHRTHR53",
+                 "OHRTHR54", "OHRTHR55", "OHRTHR56", "OHRTHR57", "OHRTHR58", "OHRTHR62"]
+
+    wide = oba_wide + hrma_wide
+
     limitquery = False
     if plot_warning_low or plot_caution_low or plot_caution_high or plot_warning_high:
         try:
